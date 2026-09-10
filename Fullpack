@@ -1,0 +1,258 @@
+<div class="tool-card">
+  <div class="card-header">
+    <h2>Pro Image Censor & Blur Tool</h2>
+    <p>Precision censoring with Live Rectangle & Brush</p>
+  </div>
+
+  <div class="card-body">
+    <div class="input-group">
+      <label for="image-input">Upload Image</label>
+      <input type="file" id="image-input" accept="image/*" onchange="loadImage(event)" />
+    </div>
+
+    <div class="tools-grid">
+      <div class="input-group">
+        <label for="censor-mode">Effect Style</label>
+        <select id="censor-mode">
+          <option value="blur">Blur</option>
+          <option value="pixelate">Pixelate</option>
+          <option value="blackout">Black Box</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label for="draw-shape">Tool Type</label>
+        <select id="draw-shape">
+          <option value="rect">Rectangle Box</option>
+          <option value="brush">Freehand Brush</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label for="brush-slider">Brush / Blur Size: <span id="brush-val">25</span>px</label>
+      <input type="range" id="brush-slider" min="5" max="100" value="25" oninput="document.getElementById('brush-val').innerText = this.value" />
+    </div>
+
+    <div class="result-box">
+      <div class="res-title">Interactive Canvas</div>
+      <div class="canvas-wrapper">
+        <canvas id="image-canvas"></canvas>
+      </div>
+      
+      <div class="btn-group">
+        <button class="action-btn undo-btn" onclick="undo()" id="undo-btn" disabled>Undo</button>
+        <button class="action-btn reset-btn" onclick="resetImage()" id="reset-btn" style="display:none;">Reset</button>
+        <button class="action-btn download-btn" onclick="downloadImage()" id="download-btn" style="display:none;">Download</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .tool-card { max-width: 440px; margin: 20px auto; background: #fff; border: 2px solid #1565c0; border-radius: 12px; overflow: hidden; font-family: sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+  .card-header { background: #1565c0; color: #fff; padding: 18px 15px; text-align: center; }
+  .card-header h2 { margin: 0; font-size: 20px; }
+  .card-header p { margin: 4px 0 0; font-size: 12px; opacity: 0.9; }
+  .card-body { padding: 18px; }
+  .input-group { margin-bottom: 12px; display: flex; flex-direction: column; }
+  .input-group label { font-size: 12px; font-weight: bold; color: #1565c0; margin-bottom: 4px; }
+  .tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  input[type="file"], select { padding: 8px; border: 1.5px solid #b3e5fc; border-radius: 6px; font-size: 13px; color: #0d47a1; outline: none; }
+  input[type="range"] { accent-color: #1565c0; }
+  .result-box { background: #e1f5fe; border: 1.5px solid #b3e5fc; border-radius: 8px; padding: 12px; text-align: center; }
+  .res-title { font-size: 12px; color: #0288d1; font-weight: bold; margin-bottom: 8px; }
+  .canvas-wrapper { max-width: 100%; border-radius: 6px; border: 1px solid #b3e5fc; background: #fff; display: flex; justify-content: center; align-items: center; min-height: 140px; margin-bottom: 10px; touch-action: none; }
+  canvas { max-width: 100%; height: auto; display: block; cursor: crosshair; }
+  .btn-group { display: flex; gap: 8px; justify-content: center; }
+  .action-btn { border: none; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; color: #fff; }
+  .undo-btn { background: #0288d1; }
+  .undo-btn:disabled { background: #ccc; cursor: not-allowed; }
+  .reset-btn { background: #c62828; }
+  .download-btn { background: #2e7d32; }
+</style>
+
+<script>
+  let originalImg = null, isDrawing = false, startX = 0, startY = 0;
+  let undoStack = [], maxUndo = 10;
+  let snapshot = null;
+  const canvas = document.getElementById('image-canvas');
+  const ctx = canvas.getContext('2d');
+
+  function saveState() {
+    if (undoStack.length >= maxUndo) undoStack.shift();
+    undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    document.getElementById('undo-btn').disabled = false;
+  }
+
+  function undo() {
+    if (undoStack.length > 0) {
+      ctx.putImageData(undoStack.pop(), 0, 0);
+      if (undoStack.length === 0) document.getElementById('undo-btn').disabled = true;
+    }
+  }
+
+  function loadImage(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      originalImg = new Image();
+      originalImg.onload = function() {
+        canvas.width = originalImg.width;
+        canvas.height = originalImg.height;
+        resetImage();
+        document.getElementById('download-btn').style.display = "inline-block";
+        document.getElementById('reset-btn').style.display = "inline-block";
+      };
+      originalImg.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function resetImage() {
+    if (!originalImg) return;
+    undoStack = [];
+    document.getElementById('undo-btn').disabled = true;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(originalImg, 0, 0);
+  }
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    let clientX = e.clientX;
+    let clientY = e.clientY;
+
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    }
+
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+  }
+
+  function startDraw(e) {
+    if (!originalImg) return;
+    saveState();
+    isDrawing = true;
+    const pos = getPos(e);
+    startX = pos.x; 
+    startY = pos.y;
+    snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    
+    if (document.getElementById('draw-shape').value === 'brush') {
+      draw(e);
+    }
+  }
+
+  function draw(e) {
+    if (!isDrawing) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    const shape = document.getElementById('draw-shape').value;
+
+    if (shape === 'brush') {
+      const size = parseInt(document.getElementById('brush-slider').value);
+      applyCensorCircle(pos.x, pos.y, size / 2);
+    } else if (shape === 'rect') {
+      // Restore canvas state to show live bounding box preview
+      ctx.putImageData(snapshot, 0, 0);
+      
+      const width = pos.x - startX;
+      const height = pos.y - startY;
+
+      ctx.strokeStyle = '#1565c0';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6]);
+      ctx.strokeRect(startX, startY, width, height);
+      ctx.setLineDash([]);
+    }
+  }
+
+  function stopDraw(e) {
+    if (!isDrawing) return;
+    isDrawing = false;
+    const shape = document.getElementById('draw-shape').value;
+
+    if (shape === 'rect') {
+      ctx.putImageData(snapshot, 0, 0);
+      const pos = getPos(e.clientX ? e : e.changedTouches ? e.changedTouches[0] : e);
+      
+      // Normalize values for negative width/height
+      const x = Math.min(startX, pos.x);
+      const y = Math.min(startY, pos.y);
+      const w = Math.abs(pos.x - startX);
+      const h = Math.abs(pos.y - startY);
+
+      if (w > 5 && h > 5) {
+        applyCensorRect(x, y, w, h);
+      }
+    }
+  }
+
+  function applyCensorCircle(x, y, r) {
+    const mode = document.getElementById('censor-mode').value;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.clip();
+    renderEffect(x - r, y - r, r * 2, r * 2, mode);
+    ctx.restore();
+  }
+
+  function applyCensorRect(x, y, w, h) {
+    const mode = document.getElementById('censor-mode').value;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+    renderEffect(x, y, w, h, mode);
+    ctx.restore();
+  }
+
+  function renderEffect(x, y, w, h, mode) {
+    if (mode === 'blackout') {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(x, y, w, h);
+    } else if (mode === 'blur') {
+      const blurAmt = parseInt(document.getElementById('brush-slider').value);
+      const temp = document.createElement('canvas');
+      temp.width = canvas.width; 
+      temp.height = canvas.height;
+      const tCtx = temp.getContext('2d');
+      tCtx.filter = `blur(${blurAmt}px)`;
+      tCtx.drawImage(canvas, 0, 0);
+      ctx.drawImage(temp, 0, 0);
+    } else if (mode === 'pixelate') {
+      const pSize = Math.max(4, Math.floor(parseInt(document.getElementById('brush-slider').value) / 2));
+      const sw = Math.max(1, Math.floor(w / pSize));
+      const sh = Math.max(1, Math.floor(h / pSize));
+      const temp = document.createElement('canvas');
+      temp.width = sw; 
+      temp.height = sh;
+      const tCtx = temp.getContext('2d');
+      tCtx.imageSmoothingEnabled = false;
+      tCtx.drawImage(canvas, x, y, w, h, 0, 0, sw, sh);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(temp, 0, 0, sw, sh, x, y, w, h);
+    }
+  }
+
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', stopDraw);
+  
+  canvas.addEventListener('touchstart', startDraw);
+  canvas.addEventListener('touchmove', draw);
+  canvas.addEventListener('touchend', stopDraw);
+
+  function downloadImage() {
+    if (!originalImg) return;
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'censored-image.png';
+    a.click();
+  }
+</script>
