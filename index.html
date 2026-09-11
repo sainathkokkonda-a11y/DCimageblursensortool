@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Image Censor & Blur Tool</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="tool-card">
+  <div class="card-header">
+    <h2>Pro Image Censor & Blur Tool</h2>
+    <p>Precision censoring with Live Rectangle & Brush</p>
+  </div>
+
+  <div class="card-body">
+    <div class="input-group">
+      <label for="image-input">Upload Image</label>
+      <input type="file" id="image-input" accept="image/*" onchange="loadImage(event)" />
+    </div>
+
+    <div class="tools-grid">
+      <div class="input-group">
+        <label for="censor-mode">Effect Style</label>
+        <select id="censor-mode">
+          <option value="blur">Blur</option>
+          <option value="pixelate">Pixelate</option>
+          <option value="blackout">Black Box</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label for="draw-shape">Tool Type</label>
+        <select id="draw-shape">
+          <option value="rect">Rectangle Box</option>
+          <option value="brush">Freehand Brush</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label for="brush-slider">Brush / Blur Size: <span id="brush-val">25</span>px</label>
+      <input type="range" id="brush-slider" min="5" max="100" value="25" oninput="document.getElementById('brush-val').innerText = this.value" />
+    </div>
+
+    <div class="result-box">
+      <div class="res-title">Interactive Canvas</div>
+      <div class="canvas-wrapper">
+        <canvas id="image-canvas"></canvas>
+      </div>
+      
+      <div class="btn-group">
+        <button class="action-btn undo-btn" onclick="undo()" id="undo-btn" disabled>Undo</button>
+        <button class="action-btn reset-btn" onclick="resetImage()" id="reset-btn" style="display:none;">Reset</button>
+        <button class="action-btn download-btn" onclick="downloadImage()" id="download-btn" style="display:none;">Download</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
