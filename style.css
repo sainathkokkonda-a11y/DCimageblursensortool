@@ -2,8 +2,8 @@
   max-width: 440px; 
   margin: 20px auto; 
   background: #fff; 
-  border: 2px solid #1565c0; 
-  border-radius: 12px; 
+  border: 1.5px solid #1565c0;
+  border-radius: 5px; 
   overflow: hidden; 
   font-family: sans-serif; 
   box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
